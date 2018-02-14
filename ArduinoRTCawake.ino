@@ -20,16 +20,23 @@
 #include <Wire.h>
 #include "RTClibExtended.h"
 #include "LowPower.h"
+#include "stdio.h"
 
 #define wakePin 2    //use interrupt 0 (pin 2) and run function wakeUp when pin 2 gets LOW
 #define ledPin 13    //use arduino on-board led for indicating sleep or wakeup status
 RTC_DS3231 rtc;      //we are using the DS3231 RTC
+boolean runWakeUpFunction;
+int count = 0;
 
 //------------------------------------------------------------------------------------------
 
-void wakeUp()        // here the interrupt is handled after wakeup
+void wakeUp() //ISR called by interrupt - must take no parameters and return nothing
 {
-
+  //This flag prevent multiple entrances since wakeUp is called by level LOW
+  if (runWakeUpFunction) { 
+    count++;
+    runWakeUpFunction = false;
+  }
 }
 
 //------------------------------------------------------------------------------------------
@@ -65,6 +72,8 @@ void setup() {
   //Enable alarm 2
   rtc.alarmInterrupt(2, true);
 
+  //Initialize serial:
+  Serial.begin(9600);
   //Start Led in OFF
   digitalWrite(ledPin, LOW);
 }
@@ -78,11 +87,18 @@ void setup() {
 void loop() {
   //Make RTC alarm when it should be done and arduino go to rest...
   rtc.clearAlarm(2);
-  attachInterrupt(0, wakeUp, LOW);                       //run wakeUp function when pin 2 gets low
-  LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);   //arduino goes to sleep
-  detachInterrupt(0);                                    //resumes here after wake-up
+  attachInterrupt(0, wakeUp, LOW); //run wakeUp function when pin 2 goes to low
+  LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF); //arduino goes to sleep
+  runWakeUpFunction = true;
+  detachInterrupt(0); //resumes here after wake-up
   
-  //Blink two times - Put here your code
+  //Put here your code
+  //Just print something
+  char buffer[20];
+  sprintf(buffer,"I am awake! Count: %d",count);   
+  Serial.println(buffer);
+  delay(1000); //Give time to complete the transmission
+  //Blink two times
   digitalWrite(ledPin, HIGH);
   delay(500);
   digitalWrite(ledPin, LOW);
