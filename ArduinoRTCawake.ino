@@ -24,6 +24,7 @@
 
 #define wakePin 2    //use interrupt 0 (pin 2) and run function wakeUp when pin 2 gets LOW
 #define ledPin 13    //use arduino on-board led for indicating sleep or wakeup status
+#define adjustRTC false;
 RTC_DS3231 rtc;      //we are using the DS3231 RTC
 boolean runWakeUpFunction;
 int count = 0;
@@ -51,8 +52,10 @@ void setup() {
   Wire.begin();
   rtc.begin();
   
-  //Adjust RTC datetime to computer's current datetime
-  rtc.adjust(DateTime(__DATE__, __TIME__));
+#ifdef adjustRTC 
+    //Adjust RTC datetime to computer's current datetime
+    rtc.adjust(DateTime(__DATE__, __TIME__));
+#endif
   
   //clear any pending alarms
   rtc.armAlarm(1, false);
@@ -92,20 +95,37 @@ void loop() {
   runWakeUpFunction = true;
   detachInterrupt(0); //resumes here after wake-up
   
-  //Put here your code
+  /** Put here your code **/
+  
   //Just print something
-  char buffer[20];
-  sprintf(buffer,"I am awake! Count: %d",count);   
+  char buffer[30];
+  DateTime now = rtc.now();
+  int minute = now.minute();
+  sprintf(buffer,"%02d:%02d:%02d - I am awake for the %d time!",now.hour(),minute,now.second(),count);   
   Serial.println(buffer);
   delay(1000); //Give time to complete the transmission
-  //Blink two times
-  digitalWrite(ledPin, HIGH);
-  delay(500);
-  digitalWrite(ledPin, LOW);
-  delay(500);
-  digitalWrite(ledPin, HIGH);
-  delay(500);
-  digitalWrite(ledPin, LOW);
+  
+  if (minute % 15 == 0) {
+    Serial.println("We've reached a quarter of hour!");
+    delay(1000); //Give time to complete the transmission
+    //Blink ten times
+    for (int i = 0;i < 10;i++) {
+      digitalWrite(ledPin, HIGH);
+      delay(500);
+      digitalWrite(ledPin, LOW);
+      delay(500);
+    }
+  } else {
+    //Blink two times
+    for (int i = 0;i < 2;i++) {
+      digitalWrite(ledPin, HIGH);
+      delay(500);
+      digitalWrite(ledPin, LOW);
+      delay(500);
+    }
+  }
+  
+  /** End of your code **/
 }
 
 //------------------------------------------------------------------------------------------
